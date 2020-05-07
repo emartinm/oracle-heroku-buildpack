@@ -1,6 +1,6 @@
 # Heroku Buildpack for Oracle
 
-Heroku buildpack for setting up Oracle Instant Client and the `LD_LIBRARY_PATH` so that the `cx_Oracle`  Python library can find all the files (with the exception of `libaio1`, as discussed later).
+Heroku buildpack for setting up Oracle Instant Client and the `LD_LIBRARY_PATH` so that the `cx_Oracle`  Python library can find all the files.
 
 # Usage
 
@@ -14,7 +14,7 @@ $ touch .oracle.yml
 
 ## Add Buildpack
 
-You'll need to use multiple buildpacks. Heroku natively also support's multiple buildpacks, so it's easy:
+You'll need to use multiple buildpacks. Heroku natively supports multiple buildpacks, so it's easy:
 
     $ heroku buildpacks:clear
     $ heroku buildpacks:add heroku/python
@@ -27,6 +27,12 @@ The result must be:
     1. heroku-community/apt
     2. https://github.com/emartinm/oracle-heroku-buildpack
     3. heroku/python
+
+The buildpack `heroku-community/apt` will install using `apt` all the packages appearing in the file `Aptfile`. We need to install `libaio1` so that `cx_Oracle` could work. The contents of this `Aptfile` file would be one line:
+
+    libaio1
+
+For some reason, `libaio1` is installed in the unexpected directory `/app/.apt/lib/x86_64-linux-gnu` that is not in added in `LD_LIBRARY_PATH` by the `heroku-community/apt` buildpack. For simplicity, the `oracle-heroku-buildpack` will do this for you (probably it shouldn't, but it makes things easier).
 
 # Changes from the original version
 * Ported from Ruby to Bash, as encouraged at https://devcenter.heroku.com/articles/buildpack-api#buildpack-api
