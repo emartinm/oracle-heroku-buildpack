@@ -32,7 +32,9 @@ The buildpack `heroku-community/apt` will install using `apt` all the packages a
 
     libaio1
 
-For some reason, `libaio1` is installed in the unexpected directory `/app/.apt/lib/x86_64-linux-gnu` that is not in added in `LD_LIBRARY_PATH` by the `heroku-community/apt` buildpack. For simplicity, the `oracle-heroku-buildpack` will do this for you (probably it shouldn't, but it makes things easier).
+For some reason, `libaio1` is installed in the unexpected directory `/app/.apt/lib/x86_64-linux-gnu` that is not in added in `LD_LIBRARY_PATH` by the `heroku-community/apt` buildpack. For simplicity, the `oracle-heroku-buildpack` will do this for you (*probably it shouldn't, but it makes things easier*).
+
+More information about this configuration of buildpacks can be found in https://stackoverflow.com/questions/37283524/python-cx-oracle-in-heroku.
 
 # Changes from the original version
 * Ported from Ruby to Bash, as encouraged at https://devcenter.heroku.com/articles/buildpack-api#buildpack-api
