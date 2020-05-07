@@ -61,7 +61,7 @@ echo '-----> Create profile.d script'
 
 mkdir -p ${BUILD_DIR}/.profile.d
 PROFILED_FILE=${BUILD_DIR}/.profile.d/oracle.sh
-ORACLE_HOME="${BUILD_DIR}/vendor/oracle_instantclient/${INSTANT_CLIENT_FOLDER}"
+ORACLE_HOME="/app/vendor/oracle_instantclient/${INSTANT_CLIENT_FOLDER}"
 LIBAIO_FOLDER='/app/.apt/lib/x86_64-linux-gnu'
 echo "export ORACLE_HOME=${ORACLE_HOME}" >> ${PROFILED_FILE}
 echo "export LD_LIBRARY_PATH=${ORACLE_HOME}:${LIBAIO_FOLDER}:${LD_LIBRARY_PATH}" >> ${PROFILED_FILE}
