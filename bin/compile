@@ -1,125 +1,93 @@
-#!/usr/bin/env ruby
+#! /bin/bash
 
-require 'yaml'
+print_indent () {
+    echo "       ${1}"
+}
 
-$stdout.sync = true
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
 
-def indent(msg)
-  puts "       #{msg}"
-end
-
-BUILD_DIR=ARGV[0]
-ENV_DIR=ARGV[2]
+ORACLE_INSTANT_CLIENT_DIR="${BUILD_DIR}/vendor/oracle_instantclient"
 
 
-ORACLE_INSTANT_CLIENT_DIR="#{BUILD_DIR}/vendor/oracle_instantclient"
-ORACLE_VERSION='11.2.0.3.0'
-AWS_BUCKET='oracle-instantclient-installers'
+echo "-----> Installing the latest version of Oracle Instant Client from "
+echo "https://www.oracle.com/es/database/technologies/instant-client/linux-x86-64-downloads.html"
+echo
 
-# if File.exists?(File.join(ORACLE_INSTANT_CLIENT_DIR, "instantclient_11_2", "libclntsh.so.11.1"))
-#   indent "Oracle Client already installed... skipping!"
-#   exit 0
-# end
+echo "-----> Oracle Client will be installed in ${ORACLE_INSTANT_CLIENT_DIR}"
 
-puts "-----> Oracle Client will be installed in #{ORACLE_INSTANT_CLIENT_DIR}"
+ORACLE_INSTANT_CLIENT_URL="https://download.oracle.com/otn_software/linux/instantclient/instantclient-basic-linuxx64.zip"
+# ORACLE_INSTANT_CLIENT_URL="https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip"
+ORACLE_INSTANT_CLIENT_FILENAME="instantclient-basic-linuxx64.zip"
 
-puts "-----> Found an .oracle.yml"
-ORACLE_CONFIG = YAML.load_file("#{BUILD_DIR}/.oracle.yml")
-ORACLE_INSTANT_CLIENT_URL="https://s3.amazonaws.com/#{AWS_BUCKET}/instantclient-basic-linux.x64-#{ORACLE_VERSION}.zip"
-ORACLE_INSTANT_CLIENT_FILENAME=ORACLE_INSTANT_CLIENT_URL.split(/\//).last
+ORACLE_SDK_URL="https://download.oracle.com/otn_software/linux/instantclient/instantclient-sdk-linuxx64.zip"
+ORACLE_SDK_FILENAME="instantclient-sdk-linuxx64.zip"
 
-indent "Making directory #{ORACLE_INSTANT_CLIENT_DIR}"
-`mkdir -p #{ORACLE_INSTANT_CLIENT_DIR}`
+print_indent "Making directory ${ORACLE_INSTANT_CLIENT_DIR}"
+mkdir -p ${ORACLE_INSTANT_CLIENT_DIR}
 
-indent "Downloading and extracting #{ORACLE_INSTANT_CLIENT_FILENAME}"
-`curl #{ORACLE_INSTANT_CLIENT_URL} -o #{ORACLE_INSTANT_CLIENT_FILENAME}`
-`unzip #{ORACLE_INSTANT_CLIENT_FILENAME} -d #{ORACLE_INSTANT_CLIENT_DIR}`
-
-unless $?.success?
-  puts "-----> Failure while downloading Oracle instant client archive: #{$?}"
+print_indent "Downloading and extracting ${ORACLE_INSTANT_CLIENT_FILENAME}"
+curl ${ORACLE_INSTANT_CLIENT_URL} -o ${ORACLE_INSTANT_CLIENT_FILENAME}
+unzip ${ORACLE_INSTANT_CLIENT_FILENAME} -d ${ORACLE_INSTANT_CLIENT_DIR}
+if [ $? -ne 0 ]; then
+  echo 
+  echo "-----> Failure while downloading and unpacking Oracle instant client archive: $?"
   exit 1
-end
+fi
 
-puts "-----> Successfully extracted #{ORACLE_INSTANT_CLIENT_FILENAME}"
+INSTANT_CLIENT_FOLDER=`ls ${BUILD_DIR}/vendor/oracle_instantclient/`
 
-ORACLE_SDK_URL="https://s3.amazonaws.com/#{AWS_BUCKET}/instantclient-sdk-linux.x64-#{ORACLE_VERSION}.zip"
-ORACLE_SDK_FILENAME=ORACLE_SDK_URL.split(/\//).last
+echo
+echo "-----> Successfully extracted ${ORACLE_INSTANT_CLIENT_FILENAME} version ${INSTANT_CLIENT_FOLDER}"
+echo
 
-indent "Downloading and extracting #{ORACLE_SDK_FILENAME}"
-`curl #{ORACLE_SDK_URL} -o #{ORACLE_SDK_FILENAME}`
-`unzip #{ORACLE_SDK_FILENAME} -d #{ORACLE_INSTANT_CLIENT_DIR}`
+print_indent "Downloading and extracting ${ORACLE_SDK_FILENAME}"
 
-unless $?.success?
-  puts "-----> Failure while downloading Oracle SDK archive: #{$?}"
+curl ${ORACLE_SDK_URL} -o ${ORACLE_SDK_FILENAME}
+unzip ${ORACLE_SDK_FILENAME} -d ${ORACLE_INSTANT_CLIENT_DIR}
+if [ $? -ne 0 ]; then 
+  echo
+  echo "-----> Failure while unpacking and unpacking Oracle SDK archive: $?"
   exit 1
-end
+fi
 
-puts "-----> Successfully extracted #{ORACLE_SDK_FILENAME}"
+echo
+echo "-----> Successfully extracted ${ORACLE_SDK_FILENAME} version ${INSTANT_CLIENT_FOLDER}"
+echo
 
-ORACLE_HOME = "/app/vendor/oracle_instantclient/instantclient_11_2"
 
-ORACLE_NETWORK_ADMIN_DIR = "#{ORACLE_INSTANT_CLIENT_DIR}/network/admin"
-`mkdir -p #{ORACLE_NETWORK_ADMIN_DIR}`
+echo '-----> Create profile.d script'
 
-puts '-----> Creating symlinks'
-`cd #{ORACLE_INSTANT_CLIENT_DIR}/instantclient_11_2 && ln -sf libclntsh.so.11.1 libclntsh.so`
-`cd #{ORACLE_INSTANT_CLIENT_DIR}/instantclient_11_2 && ln -sf libocci.so.11.1 libocci.so`
+mkdir -p ${BUILD_DIR}/.profile.d
+PROFILED_FILE=${BUILD_DIR}/.profile.d/oracle.sh
+ORACLE_HOME="${BUILD_DIR}/vendor/oracle_instantclient/${INSTANT_CLIENT_FOLDER}"
+LIBAIO_FOLDER='/app/.apt/lib/x86_64-linux-gnu'
+echo "export ORACLE_HOME=${ORACLE_HOME}" >> ${PROFILED_FILE}
+echo "export LD_LIBRARY_PATH=${ORACLE_HOME}:${LIBAIO_FOLDER}:${LD_LIBRARY_PATH}" >> ${PROFILED_FILE}
+echo "export PATH=${ORACLE_HOME}:${PATH}" >> ${PROFILED_FILE}
+echo
 
-unless $?.success?
-  puts "-----> Failure to create symlinks: #{$?}"
-  exit 1
-end
 
-###########
-# Enrique: removed support for these files because the buildpack is failing at this point wiht:
-# <...>/bin/compile:73:in `<main>': undefined method `[]' for false:FalseClass (NoMethodError)
-###########
+echo  '-----> Create environment variables'
 
-# TNSNAMES_FILENAME = ORACLE_CONFIG['tnsnames.ora']
-# if File.exists?(File.join(BUILD_DIR, TNSNAMES_FILENAME))
-#   indent "Symlink #{TNSNAMES_FILENAME} to #{ORACLE_NETWORK_ADMIN_DIR}/tnsnames.ora"
-#   `ln -sf #{File.join('/app', TNSNAMES_FILENAME)} #{ORACLE_NETWORK_ADMIN_DIR}/tnsnames.ora`
-# end
+print_indent 'Save ORACLE_HOME to ENV_DIR'
+ORACLE_HOME_FILE="${ENV_DIR}/ORACLE_HOME"
+# rm ${ORACLE_HOME_FILE}
+echo ${ORACLE_HOME} >> ${ORACLE_HOME_FILE}
+print_indent "ORACLE_HOME=${ORACLE_HOME}"
 
-# SQLNET_FILENAME = ORACLE_CONFIG['sqlnet.ora']
-# if File.exists?(File.join(BUILD_DIR, SQLNET_FILENAME))
-#   indent "Symlink #{SQLNET_FILENAME} to #{ORACLE_NETWORK_ADMIN_DIR}/sqlnet.ora"
-#   `ln -sf #{File.join('/app', SQLNET_FILENAME)} #{ORACLE_NETWORK_ADMIN_DIR}/sqlnet.ora`
-# end
+print_indent 'Save build LD_LIBRARY_PATH to ENV_DIR'
+LD_LYBRARY_PATH_FILE="${ENV_DIR}/LD_LYBRARY_PATH"
+# rm ${LD_LYBRARY_PATH_FILE}
+echo "${ORACLE_HOME}:${LIBAIO_FOLDER}" >> ${LD_LYBRARY_PATH_FILE}
+print_indent "LD_LIBRARY_PATH=${ORACLE_HOME}:${LIBAIO_FOLDER}"
+echo
 
-puts '-----> Create profile.d script'
-`mkdir -p #{BUILD_DIR}/.profile.d`
+echo '-----> IMPORTANT!!'
+print_indent 'You also need to install "libaio1" using the buildpack "heroku-community/apt"'
+print_indent 'More information about this in:'
+print_indent 'https://github.com/emartinm/oracle-heroku-buildpack'
+echo
 
-open("#{BUILD_DIR}/.profile.d/oracle.sh", "w") do |f|
-  f.puts "export ORACLE_HOME=#{ORACLE_HOME}"
-  f.puts "export LD_LIBRARY_PATH=#{ORACLE_HOME}:$LD_LIBRARY_PATH"
-  f.puts "export PATH=#{ORACLE_HOME}:$PATH"
-  f.puts "export TNS_ADMIN=#{ORACLE_HOME}/network/admin"
-end
-
-puts '-----> Create environment variables'
-indent 'Save ORACLE_HOME to ENV_DIR'
-ORACLE_HOME_FILE = File.join(ENV_DIR, 'ORACLE_HOME')
-`rm #{ORACLE_HOME_FILE}`
-open(ORACLE_HOME_FILE, 'w') do |f|
-  f.puts "#{ORACLE_HOME}"
-  indent "ORACLE_HOME=#{ORACLE_HOME}"
-end
-
-indent 'Save build LD_LIBRARY_PATH to ENV_DIR'
-LD_LYBRARY_PATH_FILE = File.join(ENV_DIR, 'LD_LIBRARY_PATH')
-`rm #{LD_LYBRARY_PATH_FILE}`
-open(LD_LYBRARY_PATH_FILE, 'w') do |f|
-  f.puts "#{ORACLE_HOME}"
-  indent "LD_LIBRARY_PATH=#{ORACLE_HOME}"
-end
-
-indent 'Save TNS_ADMIN to ENV_DIR'
-TNS_ADMIN_FILE = File.join(ENV_DIR, 'TNS_ADMIN')
-`rm #{TNS_ADMIN_FILE}`
-open(TNS_ADMIN_FILE, 'w') do |f|
-  f.puts "#{ORACLE_HOME}/network/admin"
-  indent "TNS_ADMIN=#{ORACLE_HOME}/network/admin"
-end
-
-puts '-----> Done!'
+echo '-----> Done!'
