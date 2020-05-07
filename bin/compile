@@ -12,11 +12,9 @@ ORACLE_INSTANT_CLIENT_DIR="${BUILD_DIR}/vendor/oracle_instantclient"
 
 
 echo "-----> Installing the latest version of Oracle Instant Client from "
-echo "https://www.oracle.com/es/database/technologies/instant-client/linux-x86-64-downloads.html"
-echo
+print_indent "https://www.oracle.com/es/database/technologies/instant-client/linux-x86-64-downloads.html"
 
 echo "-----> Oracle Client will be installed in ${ORACLE_INSTANT_CLIENT_DIR}"
-
 ORACLE_INSTANT_CLIENT_URL="https://download.oracle.com/otn_software/linux/instantclient/instantclient-basic-linuxx64.zip"
 # ORACLE_INSTANT_CLIENT_URL="https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip"
 ORACLE_INSTANT_CLIENT_FILENAME="instantclient-basic-linuxx64.zip"
@@ -31,58 +29,31 @@ print_indent "Downloading and extracting ${ORACLE_INSTANT_CLIENT_FILENAME}"
 curl ${ORACLE_INSTANT_CLIENT_URL} -o ${ORACLE_INSTANT_CLIENT_FILENAME}
 unzip ${ORACLE_INSTANT_CLIENT_FILENAME} -d ${ORACLE_INSTANT_CLIENT_DIR}
 if [ $? -ne 0 ]; then
-  echo 
-  echo "-----> Failure while downloading and unpacking Oracle instant client archive: $?"
+  echo "-----> Failure while downloading and extracting Oracle instant client archive: $?"
   exit 1
 fi
 
 INSTANT_CLIENT_FOLDER=`ls ${BUILD_DIR}/vendor/oracle_instantclient/`
-
-echo
 echo "-----> Successfully extracted ${ORACLE_INSTANT_CLIENT_FILENAME} version ${INSTANT_CLIENT_FOLDER}"
-echo
 
 print_indent "Downloading and extracting ${ORACLE_SDK_FILENAME}"
-
 curl ${ORACLE_SDK_URL} -o ${ORACLE_SDK_FILENAME}
 unzip ${ORACLE_SDK_FILENAME} -d ${ORACLE_INSTANT_CLIENT_DIR}
 if [ $? -ne 0 ]; then 
-  echo
   echo "-----> Failure while unpacking and unpacking Oracle SDK archive: $?"
   exit 1
 fi
 
-echo
 echo "-----> Successfully extracted ${ORACLE_SDK_FILENAME} version ${INSTANT_CLIENT_FOLDER}"
-echo
-
 
 echo '-----> Create profile.d script'
-
 mkdir -p ${BUILD_DIR}/.profile.d
 PROFILED_FILE=${BUILD_DIR}/.profile.d/oracle.sh
 ORACLE_HOME="/app/vendor/oracle_instantclient/${INSTANT_CLIENT_FOLDER}"
 LIBAIO_FOLDER='/app/.apt/lib/x86_64-linux-gnu'
 echo "export ORACLE_HOME=${ORACLE_HOME}" >> ${PROFILED_FILE}
-echo "export LD_LIBRARY_PATH=${ORACLE_HOME}:${LIBAIO_FOLDER}:${LD_LIBRARY_PATH}" >> ${PROFILED_FILE}
-echo "export PATH=${ORACLE_HOME}:${PATH}" >> ${PROFILED_FILE}
-echo
-
-
-echo  '-----> Create environment variables'
-
-print_indent 'Save ORACLE_HOME to ENV_DIR'
-ORACLE_HOME_FILE="${ENV_DIR}/ORACLE_HOME"
-# rm ${ORACLE_HOME_FILE}
-echo ${ORACLE_HOME} >> ${ORACLE_HOME_FILE}
-print_indent "ORACLE_HOME=${ORACLE_HOME}"
-
-print_indent 'Save build LD_LIBRARY_PATH to ENV_DIR'
-LD_LYBRARY_PATH_FILE="${ENV_DIR}/LD_LYBRARY_PATH"
-# rm ${LD_LYBRARY_PATH_FILE}
-echo "${ORACLE_HOME}:${LIBAIO_FOLDER}" >> ${LD_LYBRARY_PATH_FILE}
-print_indent "LD_LIBRARY_PATH=${ORACLE_HOME}:${LIBAIO_FOLDER}"
-echo
+echo "export LD_LIBRARY_PATH=${ORACLE_HOME}:${LIBAIO_FOLDER}:"'$LD_LIBRARY_PATH' >> ${PROFILED_FILE}
+echo "export PATH=${ORACLE_HOME}:"'$PATH' >> ${PROFILED_FILE}
 
 echo '-----> IMPORTANT!!'
 print_indent 'You also need to install "libaio1" using the buildpack "heroku-community/apt"'
